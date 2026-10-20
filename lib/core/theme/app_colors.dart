@@ -13,11 +13,16 @@ class AppColors {
   static const lavender = Color(0xFF8E8CE0);
   static const lavenderSoft = Color(0xFFECEBFB);
 
+  // Feelings
+  static const sunny = Color(0xFFF5A623);
+  static const sunnySoft = Color(0xFFFFF1D6);
+
   // Surfaces
   static const background = Color(0xFFFFF6F2);
   static const backgroundBlush = Color(0xFFFDE8EC);
   static const softPink = Color(0xFFFDEEF1);
   static const surface = Color(0xFFFFFFFF);
+  static const offWhite = Color(0xFFFFFAF8);
 
   // Text
   static const text = Color(0xFF4A2B33);
@@ -27,6 +32,9 @@ class AppColors {
   // Lines
   static const border = Color(0xFFF1E1E4);
   static const divider = Color(0xFFF3E6E8);
+
+  // Status
+  static const online = Color(0xFF5BC98A);
 
   static const backgroundGradient = LinearGradient(
     begin: Alignment.topCenter,
@@ -38,5 +46,11 @@ class AppColors {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [Color(0xFFF6F5FE), lavenderSoft],
+  );
+
+  static const sunnyGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFFFFFBF2), sunnySoft],
   );
 }
