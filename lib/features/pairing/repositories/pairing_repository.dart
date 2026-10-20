@@ -76,4 +76,22 @@ class PairingRepository {
   // Decline (theirs) and cancel (mine) both just delete the request
   Future<void> deleteRequest(String requestId) =>
       _requests.doc(requestId).delete();
+
+  Future<void> acceptRequest(PairRequest request) async {
+    final coupleRef = _db.collection('couples').doc();
+    final fromUserRef = _db.collection('users').doc(request.fromUid);
+    final toUserRef = _db.collection('users').doc(request.toUid);
+
+    // Start a batch
+    final batch = _db.batch();
+
+    batch.set(coupleRef, {'members': [request.fromUid, request.toUid], 'createdAt': Timestamp.now()});
+
+    batch.update(fromUserRef, {'coupleId': coupleRef.id});
+    batch.update(toUserRef, {'coupleId': coupleRef.id});
+
+    batch.delete(_db.collection('pairRequests').doc(request.id));
+
+    await batch.commit();
+  }
 }

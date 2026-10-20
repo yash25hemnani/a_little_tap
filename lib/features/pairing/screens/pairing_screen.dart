@@ -1,4 +1,3 @@
-import 'package:a_little_tap/core/layout/main_layout.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
@@ -79,11 +78,16 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
   void _decline(PairRequest request) =>
       ref.read(pairingRepositoryProvider).deleteRequest(request.id);
 
-  void _accept(PairRequest request) {
-    // Temporary: AuthGate will switch to MainLayout once coupleId is set
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const MainLayout()));
+  void _accept(PairRequest request) async {
+    try {
+      await ref.read(pairingRepositoryProvider).acceptRequest(request);
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Couldn't connect, try again")));
+    }
   }
 
   @override
@@ -96,18 +100,6 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      // TEMP: for switching accounts while testing pairing
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          TextButton(
-            // AuthGate sees the sign-out and shows AuthScreen
-            onPressed: () => ref.read(authServiceProvider).signOut(),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
