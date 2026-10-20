@@ -1,21 +1,25 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/auth/models/user_model.dart';
+import 'package:a_little_tap/features/auth/providers/user_provider.dart';
+import 'package:a_little_tap/features/auth/services/auth_service.dart';
 import 'package:a_little_tap/features/auth/widgets/password_field.dart';
-import 'package:a_little_tap/features/pairing/screens/pairing_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 enum AuthMode { signUp, logIn }
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   final AuthMode initialMode;
 
   const AuthScreen({super.key, this.initialMode = AuthMode.signUp});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -71,14 +75,46 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() => _loading = true);
 
-    // Auth flow goes here
-    await Future.delayed(const Duration(seconds: 1));
+    final authService = AuthService();
+    final userRepository = ref.read(userRepositoryProvider);
 
-    if (!mounted) return;
-    setState(() => _loading = false);
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const PairingScreen()));
+    try {
+      if (_isSignUp) {
+        final user = await authService.signUp(
+          _email.text.trim(),
+          _password.text,
+        );
+
+        if (user != null) {
+          await userRepository.createUser(
+            UserModel(
+              id: user.uid,
+              email: user.email!,
+              name: user.displayName,
+              createdAt: DateTime.now(),
+            ),
+          );
+        }
+      } else {
+        await authService.signIn(_email.text.trim(), _password.text);
+      }
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? 'Something went wrong'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
   }
 
   @override

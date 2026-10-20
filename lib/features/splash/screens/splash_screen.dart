@@ -1,5 +1,5 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
-import 'package:a_little_tap/features/auth/screens/auth_screen.dart';
+import 'package:a_little_tap/features/auth/screens/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -30,9 +30,12 @@ class _SplashScreenState extends State<SplashScreen> {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 1000),
-        pageBuilder: (_, _, _) => const AuthScreen(),
+        pageBuilder: (_, _, _) => const AuthGate(),
         transitionsBuilder: (_, animation, _, child) {
-          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
           return FadeTransition(
             opacity: curved,
             child: ScaleTransition(
