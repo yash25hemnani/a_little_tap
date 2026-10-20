@@ -1,7 +1,9 @@
 import 'package:a_little_tap/core/layout/main_layout.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/pairing/widgets/invite_code_field.dart';
+import 'package:a_little_tap/features/pairing/widgets/request_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PairingScreen extends StatefulWidget {
@@ -16,6 +18,11 @@ class _PairingScreenState extends State<PairingScreen> {
   bool _loading = false;
   String? _error;
 
+  // Placeholder data until Firebase is wired up
+  static const _myCode = '7F3K-Q29D';
+  final List<String> _incoming = ['Varsha'];
+  String? _sentTo;
+
   // "7F3K-2Q9D" → 9 chars including the dash
   bool _isComplete(String text) => text.length == 9;
 
@@ -25,10 +32,22 @@ class _PairingScreenState extends State<PairingScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_loading || !_isComplete(_codeController.text)) return;
+  Future<void> _copyCode() async {
+    await Clipboard.setData(const ClipboardData(text: _myCode));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Code copied')));
+  }
 
+  Future<void> _connect() async {
+    if (_loading || !_isComplete(_codeController.text)) return;
     FocusScope.of(context).unfocus();
+
+    if (_codeController.text == _myCode) {
+      setState(() => _error = "That's your own code");
+      return;
+    }
 
     setState(() {
       _loading = true;
@@ -36,12 +55,21 @@ class _PairingScreenState extends State<PairingScreen> {
     });
 
     await Future.delayed(const Duration(seconds: 1));
-
     if (!mounted) return;
+
     setState(() {
       _loading = false;
+      _sentTo = 'Alex';
+      _codeController.clear();
     });
+  }
 
+  void _cancel() => setState(() => _sentTo = null);
+
+  void _decline(String name) => setState(() => _incoming.remove(name));
+
+  void _accept(String name) {
+    // Temporary: AuthGate will switch to MainLayout once coupleId is set
     Navigator.of(
       context,
     ).pushReplacement(MaterialPageRoute(builder: (_) => const MainLayout()));
@@ -60,64 +88,146 @@ class _PairingScreenState extends State<PairingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Little heart badge; the whole header is centred around it
-                Center(
-                  child: CircleAvatar(
-                    radius: 36,
-                    backgroundColor: AppColors.softPink,
-                    child: const Icon(
-                      Icons.favorite_rounded,
-                      size: 34,
-                      color: AppColors.heart,
-                    ),
-                  ),
+                // Hero illustration
+                Image.asset(
+                  'assets/images/holding_hands.png',
+                  height: 300,
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Connect hearts',
+                  'Pair with your partner',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    textStyle: text.headlineMedium,
+                    textStyle: text.headlineSmall,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  "Enter your partner's code.",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    textStyle: text.bodyMedium,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                InviteCodeField(
-                  controller: _codeController,
-                  errorText: _error,
-                  onSubmitted: _submit,
-                ),
-                const SizedBox(height: 32),
-                ValueListenableBuilder(
-                  valueListenable: _codeController,
-                  builder: (context, value, _) => FilledButton(
-                    onPressed: _isComplete(value.text) ? _submit : null,
-                    child: _loading
-                        ? const SizedBox.square(
-                            dimension: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: AppColors.onPrimary,
-                            ),
-                          )
-                        : const Text('Continue'),
-                  ),
-                ),
+                const SizedBox(height: 24),
+
+                // Show one thing at a time:
+                // an invite for me > my sent invite > my code + enter code.
+                if (_incoming.isNotEmpty)
+                  _buildIncoming(_incoming.first)
+                else if (_sentTo != null)
+                  _buildWaiting(_sentTo!)
+                else
+                  _buildEnterCode(text),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // Someone sent me an invite
+  Widget _buildIncoming(String name) {
+    return RequestCard(
+      title: '$name wants to connect',
+      subtitle: 'Accept to become a pair',
+      actions: [
+        TextButton(
+          onPressed: () => _decline(name),
+          child: const Text('Decline'),
+        ),
+        FilledButton(
+          onPressed: () => _accept(name),
+          // The theme makes FilledButtons full width, which
+          // breaks inside a Row. Give this one a normal size.
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
+          child: const Text('Accept'),
+        ),
+      ],
+    );
+  }
+
+  // I sent an invite and am waiting
+  Widget _buildWaiting(String name) {
+    return RequestCard(
+      title: 'Sent to $name',
+      subtitle: 'Waiting for them…',
+      actions: [
+        TextButton(onPressed: _cancel, child: const Text('Cancel')),
+      ],
+    );
+  }
+
+  // No invites: show my code and let me enter theirs
+  Widget _buildEnterCode(TextTheme text) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InviteCodeField(
+          controller: _codeController,
+          errorText: _error,
+          onSubmitted: _connect,
+        ),
+        const SizedBox(height: 16),
+        ValueListenableBuilder(
+          valueListenable: _codeController,
+          builder: (context, value, _) => FilledButton(
+            onPressed: _isComplete(value.text) ? _connect : null,
+            child: _loading
+                ? const SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.onPrimary,
+                    ),
+                  )
+                : const Text('Connect'),
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        // Your code: small pink chip (tap to copy), label underneath
+        Center(
+          child: Material(
+            color: AppColors.softPink,
+            shape: const StadiumBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: _copyCode,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _myCode,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.copy_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Your code',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(
+            textStyle: text.bodySmall,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
