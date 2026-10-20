@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "932525117727",
+    "project_id": "a-little-tap",
+    "storage_bucket": "a-little-tap.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:932525117727:android:0909fd364289cc19d0602a",
+        "android_client_info": {
+          "package_name": "com.example.a_little_tap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuIzX7emvOIv_5vkTvvbZ3vb3Mq9xI-eQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
