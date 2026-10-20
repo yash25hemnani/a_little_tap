@@ -23,6 +23,8 @@ class AppColors {
   static const softPink = Color(0xFFFDEEF1);
   static const surface = Color(0xFFFFFFFF);
   static const offWhite = Color(0xFFFFFAF8);
+  static const track = Color(0xFFF2EDED); // grey behind the tab pill
+
 
   // Text
   static const text = Color(0xFF4A2B33);

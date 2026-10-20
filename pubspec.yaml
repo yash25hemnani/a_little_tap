@@ -37,6 +37,7 @@ dependencies:
   google_fonts: ^8.2.1
   avatar_glow: ^3.0.1
   vibration: ^3.2.1
+  table_calendar: ^3.3.0
 
 dev_dependencies:
   flutter_test:
