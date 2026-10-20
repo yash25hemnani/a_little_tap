@@ -1,5 +1,5 @@
 import 'package:a_little_tap/core/theme/app_theme.dart';
-import 'package:a_little_tap/features/home/screens/home_screen.dart';
+import 'package:a_little_tap/features/splash/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'A Little Tap',
       theme: AppTheme.light,
-      home: HomeScreen(),
+      home: SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
