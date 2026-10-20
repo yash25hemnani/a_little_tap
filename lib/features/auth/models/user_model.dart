@@ -6,6 +6,7 @@ class UserModel {
   final String? name;
   final String? photoUrl;
   final String? coupleId; // null until paired
+  final String? inviteCode;
   final DateTime createdAt;
 
   UserModel({
@@ -14,6 +15,7 @@ class UserModel {
     this.name,
     this.photoUrl,
     this.coupleId,
+    this.inviteCode,
     required this.createdAt,
   });
 
@@ -24,6 +26,7 @@ class UserModel {
     'name': name,
     'photoUrl': photoUrl,
     'coupleId': coupleId,
+    'inviteCode': inviteCode,
     'createdAt': Timestamp.fromDate(createdAt),
   };
 
@@ -33,6 +36,7 @@ class UserModel {
     name: map['name'],
     photoUrl: map['photoUrl'],
     coupleId: map['coupleId'],
+    inviteCode: map['inviteCode'],
     createdAt: (map['createdAt'] as Timestamp).toDate(),
   );
 }

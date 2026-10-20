@@ -1,26 +1,26 @@
 import 'package:a_little_tap/core/layout/main_layout.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/auth/providers/user_provider.dart';
 import 'package:a_little_tap/features/pairing/widgets/invite_code_field.dart';
 import 'package:a_little_tap/features/pairing/widgets/request_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class PairingScreen extends StatefulWidget {
+class PairingScreen extends ConsumerStatefulWidget {
   const PairingScreen({super.key});
 
   @override
-  State<PairingScreen> createState() => _PairingScreenState();
+  ConsumerState<PairingScreen> createState() => _PairingScreenState();
 }
 
-class _PairingScreenState extends State<PairingScreen> {
+class _PairingScreenState extends ConsumerState<PairingScreen> {
   final _codeController = TextEditingController();
   bool _loading = false;
   String? _error;
 
-  // Placeholder data until Firebase is wired up
-  static const _myCode = '7F3K-Q29D';
-  final List<String> _incoming = ['Varsha'];
+  final List<String> _incoming = [];
   String? _sentTo;
 
   // "7F3K-2Q9D" → 9 chars including the dash
@@ -33,7 +33,11 @@ class _PairingScreenState extends State<PairingScreen> {
   }
 
   Future<void> _copyCode() async {
-    await Clipboard.setData(const ClipboardData(text: _myCode));
+    final code = ref.read(inviteCodeProvider);
+    if (code == null) return;
+
+    await Clipboard.setData(ClipboardData(text: code));
+
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -44,7 +48,7 @@ class _PairingScreenState extends State<PairingScreen> {
     if (_loading || !_isComplete(_codeController.text)) return;
     FocusScope.of(context).unfocus();
 
-    if (_codeController.text == _myCode) {
+    if (_codeController.text == ref.read(inviteCodeProvider)) {
       setState(() => _error = "That's your own code");
       return;
     }
@@ -78,6 +82,7 @@ class _PairingScreenState extends State<PairingScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final code = ref.watch(inviteCodeProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -89,10 +94,7 @@ class _PairingScreenState extends State<PairingScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Hero illustration
-                Image.asset(
-                  'assets/images/holding_hands.png',
-                  height: 300,
-                ),
+                Image.asset('assets/images/holding_hands.png', height: 300),
                 const SizedBox(height: 24),
                 Text(
                   'Pair with your partner',
@@ -107,127 +109,116 @@ class _PairingScreenState extends State<PairingScreen> {
                 // Show one thing at a time:
                 // an invite for me > my sent invite > my code + enter code.
                 if (_incoming.isNotEmpty)
-                  _buildIncoming(_incoming.first)
+                  // Someone sent me an invite
+                  RequestCard(
+                    title: '${_incoming.first} wants to connect',
+                    subtitle: 'Accept to become a pair',
+                    actions: [
+                      TextButton(
+                        onPressed: () => _decline(_incoming.first),
+                        child: const Text('Decline'),
+                      ),
+                      FilledButton(
+                        onPressed: () => _accept(_incoming.first),
+                        // The theme makes FilledButtons full width, which
+                        // breaks inside a Row. Give this one a normal size.
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                        ),
+                        child: const Text('Accept'),
+                      ),
+                    ],
+                  )
                 else if (_sentTo != null)
-                  _buildWaiting(_sentTo!)
-                else
-                  _buildEnterCode(text),
+                  // I sent an invite and am waiting
+                  RequestCard(
+                    title: 'Sent to $_sentTo',
+                    subtitle: 'Waiting for them…',
+                    actions: [
+                      TextButton(
+                        onPressed: _cancel,
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  )
+                else ...[
+                  // No invites: let me enter their code
+                  InviteCodeField(
+                    controller: _codeController,
+                    errorText: _error,
+                    onSubmitted: _connect,
+                  ),
+                  const SizedBox(height: 16),
+                  ValueListenableBuilder(
+                    valueListenable: _codeController,
+                    builder: (context, value, _) => FilledButton(
+                      onPressed: _isComplete(value.text) ? _connect : null,
+                      child: _loading
+                          ? const SizedBox.square(
+                              dimension: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppColors.onPrimary,
+                              ),
+                            )
+                          : const Text('Connect'),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // small pink chip (tap to copy), label underneath
+                  Center(
+                    child: Material(
+                      color: AppColors.softPink,
+                      shape: const StadiumBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: _copyCode,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                code ?? 'XXXX-XXXX',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.copy_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your code',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      textStyle: text.bodySmall,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  // Someone sent me an invite
-  Widget _buildIncoming(String name) {
-    return RequestCard(
-      title: '$name wants to connect',
-      subtitle: 'Accept to become a pair',
-      actions: [
-        TextButton(
-          onPressed: () => _decline(name),
-          child: const Text('Decline'),
-        ),
-        FilledButton(
-          onPressed: () => _accept(name),
-          // The theme makes FilledButtons full width, which
-          // breaks inside a Row. Give this one a normal size.
-          style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
-          child: const Text('Accept'),
-        ),
-      ],
-    );
-  }
-
-  // I sent an invite and am waiting
-  Widget _buildWaiting(String name) {
-    return RequestCard(
-      title: 'Sent to $name',
-      subtitle: 'Waiting for them…',
-      actions: [
-        TextButton(onPressed: _cancel, child: const Text('Cancel')),
-      ],
-    );
-  }
-
-  // No invites: show my code and let me enter theirs
-  Widget _buildEnterCode(TextTheme text) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InviteCodeField(
-          controller: _codeController,
-          errorText: _error,
-          onSubmitted: _connect,
-        ),
-        const SizedBox(height: 16),
-        ValueListenableBuilder(
-          valueListenable: _codeController,
-          builder: (context, value, _) => FilledButton(
-            onPressed: _isComplete(value.text) ? _connect : null,
-            child: _loading
-                ? const SizedBox.square(
-                    dimension: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: AppColors.onPrimary,
-                    ),
-                  )
-                : const Text('Connect'),
-          ),
-        ),
-        const SizedBox(height: 32),
-
-        // Your code: small pink chip (tap to copy), label underneath
-        Center(
-          child: Material(
-            color: AppColors.softPink,
-            shape: const StadiumBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: _copyCode,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _myCode,
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Icons.copy_rounded,
-                      size: 16,
-                      color: AppColors.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Your code',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
-            textStyle: text.bodySmall,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }
