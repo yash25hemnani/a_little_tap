@@ -21,6 +21,9 @@ class UserModel {
 
   bool get isPaired => coupleId != null;
 
+  // "Varsha", or "varsha.k" from the email if no name yet
+  String get displayName => name ?? email.split('@').first;
+
   Map<String, dynamic> toMap() => {
     'email': email,
     'name': name,

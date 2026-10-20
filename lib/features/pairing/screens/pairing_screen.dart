@@ -1,6 +1,10 @@
 import 'package:a_little_tap/core/layout/main_layout.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
+import 'package:a_little_tap/features/pairing/models/pair_request.dart';
+import 'package:a_little_tap/features/pairing/providers/pairing_provider.dart';
+import 'package:a_little_tap/features/pairing/repositories/pairing_repository.dart';
 import 'package:a_little_tap/features/pairing/widgets/invite_code_field.dart';
 import 'package:a_little_tap/features/pairing/widgets/request_card.dart';
 import 'package:flutter/material.dart';
@@ -19,9 +23,6 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
   final _codeController = TextEditingController();
   bool _loading = false;
   String? _error;
-
-  final List<String> _incoming = [];
-  String? _sentTo;
 
   // "7F3K-2Q9D" → 9 chars including the dash
   bool _isComplete(String text) => text.length == 9;
@@ -48,31 +49,37 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
     if (_loading || !_isComplete(_codeController.text)) return;
     FocusScope.of(context).unfocus();
 
-    if (_codeController.text == ref.read(inviteCodeProvider)) {
-      setState(() => _error = "That's your own code");
-      return;
-    }
+    // self user doc, needed for my name and code
+    final uid = ref.read(authStateProvider).value?.uid;
+    final me = uid == null ? null : ref.read(userProvider(uid)).value;
+    if (me == null) return;
 
     setState(() {
       _loading = true;
       _error = null;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-
-    setState(() {
-      _loading = false;
-      _sentTo = 'Alex';
+    try {
+      await ref
+          .read(pairingRepositoryProvider)
+          .sendRequest(me: me, code: _codeController.text);
       _codeController.clear();
-    });
+    } on PairingException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  void _cancel() => setState(() => _sentTo = null);
+  // Cancel (mine) and decline (theirs) both delete the request.
+  // The stream drops it and the card disappears by itself.
+  void _cancel(PairRequest request) =>
+      ref.read(pairingRepositoryProvider).deleteRequest(request.id);
 
-  void _decline(String name) => setState(() => _incoming.remove(name));
+  void _decline(PairRequest request) =>
+      ref.read(pairingRepositoryProvider).deleteRequest(request.id);
 
-  void _accept(String name) {
+  void _accept(PairRequest request) {
     // Temporary: AuthGate will switch to MainLayout once coupleId is set
     Navigator.of(
       context,
@@ -83,9 +90,24 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final code = ref.watch(inviteCodeProvider);
+    // Treat loading/error as "none" so the code field shows meanwhile
+    final incoming = ref.watch(incomingRequestsProvider).value ?? [];
+    final outgoing = ref.watch(outgoingRequestsProvider).value ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      // TEMP: for switching accounts while testing pairing
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          TextButton(
+            // AuthGate sees the sign-out and shows AuthScreen
+            onPressed: () => ref.read(authServiceProvider).signOut(),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -108,18 +130,18 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
 
                 // Show one thing at a time:
                 // an invite for me > my sent invite > my code + enter code.
-                if (_incoming.isNotEmpty)
+                if (incoming.isNotEmpty)
                   // Someone sent me an invite
                   RequestCard(
-                    title: '${_incoming.first} wants to connect',
+                    title: '${incoming.first.fromName} wants to connect',
                     subtitle: 'Accept to become a pair',
                     actions: [
                       TextButton(
-                        onPressed: () => _decline(_incoming.first),
+                        onPressed: () => _decline(incoming.first),
                         child: const Text('Decline'),
                       ),
                       FilledButton(
-                        onPressed: () => _accept(_incoming.first),
+                        onPressed: () => _accept(incoming.first),
                         // The theme makes FilledButtons full width, which
                         // breaks inside a Row. Give this one a normal size.
                         style: FilledButton.styleFrom(
@@ -129,14 +151,14 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
                       ),
                     ],
                   )
-                else if (_sentTo != null)
+                else if (outgoing.isNotEmpty)
                   // I sent an invite and am waiting
                   RequestCard(
-                    title: 'Sent to $_sentTo',
+                    title: 'Sent to ${outgoing.first.toName}',
                     subtitle: 'Waiting for them…',
                     actions: [
                       TextButton(
-                        onPressed: _cancel,
+                        onPressed: () => _cancel(outgoing.first),
                         child: const Text('Cancel'),
                       ),
                     ],

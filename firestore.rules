@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// Minimal rules for testing sign-up, invite codes and pair requests.
+// couples/ rules come with accepting a request (backend step 5),
+// and everything gets tightened in step 7.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // users/{uid}
+    match /users/{uid} {
+      // Any signed-in user can read a profile (to see a partner's name)
+      allow read: if request.auth != null;
+      // Only you can write your own doc
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // inviteCodes/{code} → { uid }
+    match /inviteCodes/{code} {
+      // Look up one code; listing all codes isn't allowed
+      allow get: if request.auth != null;
+      // Reserve a code only for yourself
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid;
+    }
+
+    // pairRequests/{fromUid}_{toUid}
+    match /pairRequests/{id} {
+      // Sender and receiver can see it, and decline/cancel it
+      allow read, delete: if request.auth != null
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
+      // Send (or re-send): must be from you
+      allow create, update: if request.auth != null
+        && request.resource.data.fromUid == request.auth.uid;
+    }
+
+  }
+}
