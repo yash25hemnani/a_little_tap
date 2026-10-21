@@ -25,6 +25,7 @@ class Moment {
     'subtitle': feeling.subtitle,
     'iconKey': feeling.iconKey,
     'color': feeling.colorValue,
+    'vibration': feeling.vibration.map((v) => v.toMap()).toList(),
     'createdAt': FieldValue.serverTimestamp(),
   };
 

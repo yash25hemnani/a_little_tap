@@ -1,20 +1,34 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/home/screens/home_screen.dart';
 import 'package:a_little_tap/features/moments/screens/moments_screen.dart';
 import 'package:a_little_tap/features/keepsakes/screens/keepsakes_screen.dart';
+import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MainLayout extends StatefulWidget {
+class MainLayout extends ConsumerStatefulWidget {
   const MainLayout({super.key});
 
   @override
-  State<MainLayout> createState() => _MainLayoutState();
+  ConsumerState<MainLayout> createState() => _MainLayoutState();
 }
 
-class _MainLayoutState extends State<MainLayout> {
+class _MainLayoutState extends ConsumerState<MainLayout> {
   int _index = 0;
 
   static const _barRadius = BorderRadius.vertical(top: Radius.circular(24));
+
+  @override
+  void initState() {
+    super.initState();
+
+    final uid = ref.read(authServiceProvider).currentUser?.uid;
+
+    if (uid != null) {
+      ref.read(pushServiceProvider).init(uid);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
