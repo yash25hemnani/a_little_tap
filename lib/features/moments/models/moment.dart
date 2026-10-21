@@ -1,39 +1,39 @@
-import 'package:a_little_tap/features/feelings/constants/feelings.dart';
 import 'package:a_little_tap/features/feelings/models/feeling.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-// One tap in the history; sent = true when you sent it
-typedef Moment = ({Feeling feeling, DateTime at, bool sent});
+// One tap in the history: couples/{coupleId}/moments/{id}
+class Moment {
+  final String id;
+  final String fromUid;
+  final Feeling feeling; // copied at send time, so later edits don't change history
+  final DateTime createdAt;
 
-// TODO: remove when the Moments tab reads from Firestore (4c)
-final _sample = [
-  for (final (i, f) in defaultFeelings.indexed) Feeling.fromMap('sample$i', f),
-];
+  const Moment({
+    required this.id,
+    required this.fromUid,
+    required this.feeling,
+    required this.createdAt,
+  });
 
-// Sample data until taps come from the backend (newest first)
-final sampleMoments = <Moment>[
-  (
-    feeling: _sample[1],
-    at: DateTime.now().subtract(const Duration(hours: 1)),
-    sent: false,
-  ),
-  (
-    feeling: _sample[0],
-    at: DateTime.now().subtract(const Duration(hours: 3)),
-    sent: true,
-  ),
-  (
-    feeling: _sample[2],
-    at: DateTime.now().subtract(const Duration(days: 1)),
-    sent: false,
-  ),
-  (
-    feeling: _sample[0],
-    at: DateTime.now().subtract(const Duration(days: 1, hours: 4)),
-    sent: true,
-  ),
-  (
-    feeling: _sample[0],
-    at: DateTime.now().subtract(const Duration(days: 6)),
-    sent: false,
-  ),
-];
+  bool isFrom(String uid) => fromUid == uid;
+
+  // Feeling fields are stored flat
+  // `id` isn't written and the server sets the time
+  Map<String, dynamic> toMap() => {
+    'fromUid': fromUid,
+    'title': feeling.title,
+    'subtitle': feeling.subtitle,
+    'iconKey': feeling.iconKey,
+    'color': feeling.colorValue,
+    'createdAt': FieldValue.serverTimestamp(),
+  };
+
+  factory Moment.fromMap(String id, Map<String, dynamic> map) => Moment(
+    id: id,
+    fromUid: map['fromUid'] as String? ?? '',
+    // Same field names as a feeling doc
+    feeling: Feeling.fromMap(id, map),
+    // Null until the server confirms a write we just made
+    createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+  );
+}

@@ -1,4 +1,5 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/core/utils/format_when.dart';
 import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
 import 'package:a_little_tap/features/couple/providers/couple_provider.dart';
@@ -9,6 +10,7 @@ import 'package:a_little_tap/features/home/widgets/info_card.dart';
 import 'package:a_little_tap/features/home/widgets/partner_card.dart';
 import 'package:a_little_tap/features/home/widgets/picker_sheet.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
+import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,10 +21,12 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Get user id
     final uid = ref.watch(authStateProvider).value?.uid;
+    final user = uid == null ? null : ref.watch(userProvider(uid)).value;
+
     // Get last feeling id
-    final lastId = uid == null
-        ? null
-        : ref.watch(userProvider(uid)).value?.lastFeelingId;
+    final lastId = user?.lastFeelingId;
+    final coupleId = user?.coupleId;
+
     // Get list of feelings
     final feelings = ref.watch(feelingProvider).value ?? const <Feeling>[];
 
@@ -32,6 +36,8 @@ class HomeScreen extends ConsumerWidget {
         feelings.firstOrNull;
 
     final partnerName = ref.watch(partnerProvider)?.displayName ?? '';
+
+    final lastMoment = ref.watch(lastReceivedProvider);
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -76,12 +82,25 @@ class HomeScreen extends ConsumerWidget {
                           backgroundColor: feeling.circleColor,
                           ringColor: feeling.ringColor,
                           // Plain tap sends the last picked feeling
-                          onTap: () => SendingScreen.show(
-                            context,
-                            partnerName: partnerName,
-                            feeling: feeling,
-                          ),
+                          onTap: () {
+                            if (uid == null || coupleId == null) return;
+
+                            SendingScreen.show(
+                              context,
+                              partnerName: partnerName,
+                              feeling: feeling,
+                              send: () => ref
+                                  .read(momentRepositoryProvider)
+                                  .send(
+                                    coupleId: coupleId,
+                                    fromUid: uid,
+                                    feeling: feeling,
+                                  ),
+                            );
+                          },
                           onLongPress: () async {
+                            if (uid == null || coupleId == null) return;
+
                             final picked = await PickerSheet.show(
                               context,
                               feelings,
@@ -90,15 +109,23 @@ class HomeScreen extends ConsumerWidget {
                               return; // sheet dismissed
                             }
                             // Not awaited, so the sending screen opens right away
-                            if (uid != null && picked.id != feeling.id) {
+                            if (picked.id != feeling.id) {
                               ref
                                   .read(userRepositoryProvider)
                                   .setLastFeeling(uid, picked.id);
                             }
+
                             SendingScreen.show(
                               context,
                               partnerName: partnerName,
                               feeling: picked,
+                              send: () => ref
+                                  .read(momentRepositoryProvider)
+                                  .send(
+                                    coupleId: coupleId,
+                                    fromUid: uid,
+                                    feeling: picked,
+                                  ),
                             );
                           },
                         ),
@@ -125,12 +152,19 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 28),
 
+              // Pink heart until the first tap arrives
               InfoCard(
-                icon: Icons.favorite_rounded,
+                icon: lastMoment?.feeling.icon ?? Icons.favorite_rounded,
+                iconColor: lastMoment?.feeling.color ?? AppColors.heart,
+                iconBackground:
+                    lastMoment?.feeling.circleColor ?? AppColors.softPink,
                 title: 'Last tap from $partnerName',
-                subtitle: 'Thinking of you • 3:24 PM',
+                subtitle: lastMoment == null
+                    ? 'No taps yet'
+                    : '${lastMoment.feeling.title} • ${formatWhen(context, lastMoment.createdAt)}',
                 onTap: () {},
               ),
+
               const SizedBox(height: 12),
               InfoCard(
                 icon: Icons.event_rounded,
