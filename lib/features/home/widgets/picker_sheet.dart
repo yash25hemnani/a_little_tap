@@ -1,13 +1,14 @@
 import 'dart:math';
 
-import 'package:a_little_tap/core/constants/feelings.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/feelings/models/feeling.dart';
 import 'package:flutter/material.dart';
 
 class PickerSheet extends StatelessWidget {
-  const PickerSheet({super.key});
+  final List<Feeling> feelings;
+  const PickerSheet({super.key, required this.feelings});
 
-  static Future<Feeling?> show(BuildContext context) {
+  static Future<Feeling?> show(BuildContext context, List<Feeling> feelings) {
     return showModalBottomSheet<Feeling>(
       context: context,
       isScrollControlled: true,
@@ -16,7 +17,7 @@ class PickerSheet extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => const PickerSheet(),
+      builder: (_) => PickerSheet(feelings: feelings),
     );
   }
 
@@ -36,7 +37,7 @@ class PickerSheet extends StatelessWidget {
                 'Choose a feeling',
                 style: text.titleMedium?.copyWith(color: AppColors.text),
               ),
-              const SizedBox(height: 16,),
+              const SizedBox(height: 16),
               for (final f in feelings)
                 _FeelingTile(
                   icon: f.icon,
@@ -57,7 +58,7 @@ class PickerSheet extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 4,),
+              const SizedBox(height: 4),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(

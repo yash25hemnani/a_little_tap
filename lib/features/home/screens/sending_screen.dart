@@ -1,4 +1,4 @@
-import 'package:a_little_tap/core/constants/feelings.dart';
+import 'package:a_little_tap/features/feelings/models/feeling.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
 import 'package:flutter/material.dart';

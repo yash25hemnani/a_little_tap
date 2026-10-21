@@ -1,4 +1,5 @@
 import 'package:a_little_tap/features/auth/models/user_model.dart';
+import 'package:a_little_tap/features/feelings/constants/feelings.dart';
 import 'package:a_little_tap/features/pairing/utils/invite_code.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -20,6 +21,15 @@ class UserRepository {
 
         tx.set(codeRef, {'uid': user.id});
         tx.set(userRef, {...user.toMap(), 'inviteCode': code});
+
+        for (final (index, feeling) in defaultFeelings.indexed) {
+          tx.set(userRef.collection('feelings').doc(), {
+            ...feeling,
+            'order': index,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
         return true;
       });
 
@@ -38,5 +48,12 @@ class UserRepository {
           (snap) =>
               snap.exists ? UserModel.fromMap(snap.id, snap.data()!) : null,
         );
+  }
+
+  // Remember the feeling picked last, so Home opens on it
+  Future<void> setLastFeeling(String uid, String feelingId) {
+    return _db.collection('users').doc(uid).update({
+      'lastFeelingId': feelingId,
+    });
   }
 }

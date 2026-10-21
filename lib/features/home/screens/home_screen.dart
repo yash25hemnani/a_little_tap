@@ -1,23 +1,38 @@
-import 'package:a_little_tap/core/constants/feelings.dart';
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
+import 'package:a_little_tap/features/auth/providers/user_provider.dart';
+import 'package:a_little_tap/features/couple/providers/couple_provider.dart';
+import 'package:a_little_tap/features/feelings/models/feeling.dart';
+import 'package:a_little_tap/features/feelings/provider/feeling_provider.dart';
 import 'package:a_little_tap/features/home/screens/sending_screen.dart';
 import 'package:a_little_tap/features/home/widgets/info_card.dart';
 import 'package:a_little_tap/features/home/widgets/partner_card.dart';
 import 'package:a_little_tap/features/home/widgets/picker_sheet.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Get user id
+    final uid = ref.watch(authStateProvider).value?.uid;
+    // Get last feeling id
+    final lastId = uid == null
+        ? null
+        : ref.watch(userProvider(uid)).value?.lastFeelingId;
+    // Get list of feelings
+    final feelings = ref.watch(feelingProvider).value ?? const <Feeling>[];
 
-class _HomeScreenState extends State<HomeScreen> {
-  Feeling _feeling = feelings[0];
-  @override
-  Widget build(BuildContext context) {
+    // Last used, else first (also covers a last feeling that was deleted)
+    final feeling =
+        feelings.where((f) => f.id == lastId).firstOrNull ??
+        feelings.firstOrNull;
+
+    final partnerName = ref.watch(partnerProvider)?.displayName ?? '';
+
     return Scaffold(
       backgroundColor: AppColors.offWhite,
       body: SafeArea(
@@ -32,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: PartnerCard(
-                        name: 'Varsha',
+                        name: partnerName,
                         isOnline: false,
                         lastSeen: DateTime.now().subtract(
                           const Duration(minutes: 2),
@@ -52,41 +67,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
               Expanded(
                 child: Center(
-                  child: PulsingIcon(
-                    icon: _feeling.icon,
-                    iconColor: _feeling.color,
-                    backgroundColor: _feeling.circleColor,
-                    ringColor: _feeling.ringColor,
-                    // Plain tap sends the last picked feeling
-                    onTap: () => SendingScreen.show(
-                      context,
-                      partnerName: 'Varsha',
-                      feeling: _feeling,
-                    ),
-                    onLongPress: () async {
-                      final feeling = await PickerSheet.show(context);
-                      if (feeling == null || !context.mounted) {
-                        return; // sheet dismissed
-                      }
-                      setState(() {
-                        _feeling = feeling;
-                      });
-                      SendingScreen.show(
-                        context,
-                        partnerName: 'Varsha',
-                        feeling: feeling,
-                      );
-                    },
-                  ),
+                  // Spinner until the feelings stream arrives
+                  child: feeling == null
+                      ? const CircularProgressIndicator()
+                      : PulsingIcon(
+                          icon: feeling.icon,
+                          iconColor: feeling.color,
+                          backgroundColor: feeling.circleColor,
+                          ringColor: feeling.ringColor,
+                          // Plain tap sends the last picked feeling
+                          onTap: () => SendingScreen.show(
+                            context,
+                            partnerName: partnerName,
+                            feeling: feeling,
+                          ),
+                          onLongPress: () async {
+                            final picked = await PickerSheet.show(
+                              context,
+                              feelings,
+                            );
+                            if (picked == null || !context.mounted) {
+                              return; // sheet dismissed
+                            }
+                            // Not awaited, so the sending screen opens right away
+                            if (uid != null && picked.id != feeling.id) {
+                              ref
+                                  .read(userRepositoryProvider)
+                                  .setLastFeeling(uid, picked.id);
+                            }
+                            SendingScreen.show(
+                              context,
+                              partnerName: partnerName,
+                              feeling: picked,
+                            );
+                          },
+                        ),
                 ),
               ),
 
               // Feeling name and hint read as one label under the icon
               Text(
-                '${_feeling.title}',
+                feeling?.title ?? '',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: _feeling.color,
+                  color: feeling?.color,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -95,15 +119,15 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Tap to send a little something',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 28),
 
               InfoCard(
                 icon: Icons.favorite_rounded,
-                title: 'Last tap from Varsha',
+                title: 'Last tap from $partnerName',
                 subtitle: 'Thinking of you • 3:24 PM',
                 onTap: () {},
               ),

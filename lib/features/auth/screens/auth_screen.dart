@@ -21,6 +21,7 @@ class AuthScreen extends ConsumerStatefulWidget {
 
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
@@ -31,10 +32,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   void dispose() {
+    _name.dispose();
     _email.dispose();
     _password.dispose();
     _confirmPassword.dispose();
     super.dispose();
+  }
+
+  String? _validateName(String? value) {
+    final name = value?.trim() ?? '';
+    if (name.isEmpty) return 'Enter your name';
+    if (name.length > 30) return 'Keep it under 30 characters';
+    return null;
   }
 
   String? _validateEmail(String? value) {
@@ -90,7 +99,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             UserModel(
               id: user.uid,
               email: user.email!,
-              name: user.displayName,
+              name: _name.text.trim(),
               createdAt: DateTime.now(),
             ),
           );
@@ -185,6 +194,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                 ),
                               ),
                               const SizedBox(height: 32),
+                              if (_isSignUp) ...[
+                                TextFormField(
+                                  controller: _name,
+                                  validator: _validateName,
+                                  textCapitalization: TextCapitalization.words,
+                                  textInputAction: TextInputAction.next,
+                                  autofillHints: const [AutofillHints.givenName],
+                                  decoration: const InputDecoration(
+                                    hintText: 'Your name',
+                                    prefixIcon: Icon(
+                                      Icons.person_outline_rounded,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
                               TextFormField(
                                 controller: _email,
                                 validator: _validateEmail,
