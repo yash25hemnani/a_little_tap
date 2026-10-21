@@ -70,6 +70,25 @@ class AppTheme {
         elevation: 0,
       ),
 
+      // Off state uses darker colors than `outline`, which is too pale on white cards
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.onPrimary
+              : AppColors.textSecondary,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.primary
+              : AppColors.track,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? Colors.transparent
+              : AppColors.hint,
+        ),
+      ),
+
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface, // white
         surfaceTintColor: Colors.transparent, // stops M3 tinting it pink

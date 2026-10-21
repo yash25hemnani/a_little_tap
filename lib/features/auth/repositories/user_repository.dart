@@ -56,4 +56,9 @@ class UserRepository {
       'lastFeelingId': feelingId,
     });
   }
+
+  // One toggle from Settings, e.g. ('pushEnabled', false)
+  Future<void> setSetting(String uid, String field, bool value) {
+    return _db.collection('users').doc(uid).update({field: value});
+  }
 }

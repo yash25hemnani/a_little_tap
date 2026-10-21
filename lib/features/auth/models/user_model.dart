@@ -8,6 +8,8 @@ class UserModel {
   final String? coupleId; // null until paired
   final String? lastFeelingId;
   final String? inviteCode;
+  final bool pushEnabled;
+  final bool vibrationEnabled;
   final DateTime createdAt;
 
   UserModel({
@@ -18,6 +20,8 @@ class UserModel {
     this.coupleId,
     this.lastFeelingId,
     this.inviteCode,
+    this.pushEnabled = true,
+    this.vibrationEnabled = true,
     required this.createdAt,
   });
 
@@ -43,6 +47,9 @@ class UserModel {
     coupleId: map['coupleId'],
     lastFeelingId: map['lastFeelingId'],
     inviteCode: map['inviteCode'],
+    // Missing on older docs, so default to on
+    pushEnabled: map['pushEnabled'] as bool? ?? true,
+    vibrationEnabled: map['vibrationEnabled'] as bool? ?? true,
     createdAt: (map['createdAt'] as Timestamp).toDate(),
   );
 }

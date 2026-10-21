@@ -28,6 +28,7 @@ class SendingScreen extends StatelessWidget {
     required String partnerName,
     required Feeling feeling,
     required Future<void> Function() send,
+    bool vibrate = true, // the user's Vibration setting
   }) async {
     final sent = ValueNotifier(false);
 
@@ -63,9 +64,9 @@ class SendingScreen extends StatelessWidget {
 
     // Hold "Sent" for at least 0.7s, or until the pattern finishes
     if (error == null) {
-      playVibration(feeling.vibration);
+      if (vibrate) playVibration(feeling.vibration);
       sent.value = true;
-      final holdMs = max(700, feeling.totalVibrationMs);
+      final holdMs = vibrate ? max(700, feeling.totalVibrationMs) : 700;
       await Future.delayed(Duration(milliseconds: holdMs));
     }
 

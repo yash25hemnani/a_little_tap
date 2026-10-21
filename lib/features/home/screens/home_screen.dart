@@ -11,6 +11,7 @@ import 'package:a_little_tap/features/home/widgets/partner_card.dart';
 import 'package:a_little_tap/features/home/widgets/picker_sheet.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
+import 'package:a_little_tap/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -65,7 +66,11 @@ class HomeScreen extends ConsumerWidget {
                       icon: const Icon(Icons.settings_outlined),
                       color: AppColors.textSecondary,
                       tooltip: 'Settings',
-                      onPressed: () {},
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -89,6 +94,7 @@ class HomeScreen extends ConsumerWidget {
                               context,
                               partnerName: partnerName,
                               feeling: feeling,
+                              vibrate: user?.vibrationEnabled ?? true,
                               send: () => ref
                                   .read(momentRepositoryProvider)
                                   .send(
@@ -119,6 +125,7 @@ class HomeScreen extends ConsumerWidget {
                               context,
                               partnerName: partnerName,
                               feeling: picked,
+                              vibrate: user?.vibrationEnabled ?? true,
                               send: () => ref
                                   .read(momentRepositoryProvider)
                                   .send(
