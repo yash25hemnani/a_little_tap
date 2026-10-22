@@ -51,12 +51,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBuIzX7emvOIv_5vkTvvbZ3vb3Mq9xI-eQ',
-    appId: '1:932525117727:android:0909fd364289cc19d0602a',
+    appId: '1:932525117727:android:ab56b8255b04be23d0602a',
     messagingSenderId: '932525117727',
     projectId: 'a-little-tap',
     storageBucket: 'a-little-tap.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCNnVexRl5nyTquvVF9p77koJRK4LQu2sw',
     appId: '1:932525117727:ios:7b15cdc5a9e1876ed0602a',

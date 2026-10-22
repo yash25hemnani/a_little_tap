@@ -7,7 +7,7 @@
       "android": {
         "default": {
           "projectId": "a-little-tap",
-          "appId": "1:932525117727:android:0909fd364289cc19d0602a",
+          "appId": "1:932525117727:android:ab56b8255b04be23d0602a",
           "fileOutput": "android/app/google-services.json"
         }
       },
@@ -15,7 +15,7 @@
         "lib/firebase_options.dart": {
           "projectId": "a-little-tap",
           "configurations": {
-            "android": "1:932525117727:android:0909fd364289cc19d0602a",
+            "android": "1:932525117727:android:ab56b8255b04be23d0602a",
             "ios": "1:932525117727:ios:7b15cdc5a9e1876ed0602a"
           }
         }

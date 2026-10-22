@@ -1,4 +1,4 @@
-package com.example.a_little_tap
+package com.yashhemnani.alittletap
 
 import io.flutter.embedding.android.FlutterActivity
 
