@@ -1,6 +1,7 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
+import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:a_little_tap/features/pairing/models/pair_request.dart';
 import 'package:a_little_tap/features/pairing/providers/pairing_provider.dart';
 import 'package:a_little_tap/features/pairing/repositories/pairing_repository.dart';
@@ -21,6 +22,7 @@ class PairingScreen extends ConsumerStatefulWidget {
 class _PairingScreenState extends ConsumerState<PairingScreen> {
   final _codeController = TextEditingController();
   bool _loading = false;
+  bool _loggingOut = false;
   String? _error;
 
   // "7F3K-2Q9D" → 9 chars including the dash
@@ -88,6 +90,27 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text("Couldn't connect, try again")));
     }
+  }
+
+  // Same flow as Settings; the gate swaps this screen for the auth screen
+  Future<void> _logOut() async {
+    final uid = ref.read(authStateProvider).value?.uid;
+    if (uid == null) return;
+
+    setState(() => _loggingOut = true);
+
+    // Read now, since this screen is gone by the time the snackbar shows
+    final push = ref.read(pushServiceProvider);
+    final auth = ref.read(authServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Before signing out, while rules still allow the write
+    await push.removeToken(uid);
+    await auth.signOut();
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Logged out successfully')),
+    );
   }
 
   @override
@@ -243,6 +266,27 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
                     ),
                   ),
                 ],
+
+                // Shown in every state, so an unpaired user can always leave
+                const SizedBox(height: 24),
+                Center(
+                  child: TextButton(
+                    // Disabled while logging out, so it can't run twice
+                    onPressed: _loggingOut ? null : _logOut,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                    ),
+                    child: _loggingOut
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : const Text('Log out'),
+                  ),
+                ),
               ],
             ),
           ),
