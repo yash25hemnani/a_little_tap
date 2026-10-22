@@ -3,6 +3,7 @@ import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/couple/providers/couple_provider.dart';
 import 'package:a_little_tap/features/home/widgets/info_card.dart';
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
+import 'package:a_little_tap/features/moments/screens/moment_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,7 +32,7 @@ class MomentList extends ConsumerWidget {
           iconBackground: moment.feeling.circleColor,
           title: sent ? 'You' : partnerName,
           subtitle: '${moment.feeling.title} • ${formatWhen(context, moment.createdAt)}',
-          onTap: () {},
+          onTap: () => MomentDetailScreen.show(context, moment),
         );
       },
     );

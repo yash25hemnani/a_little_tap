@@ -6,23 +6,40 @@ import 'package:a_little_tap/features/notifications/providers/push_provider.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _logOut(BuildContext context, WidgetRef ref, String uid) async {
-    // Read before popping, since ref can't be used once this screen is gone
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _loggingOut = false;
+
+  // Stays on Settings with a spinner, then drops back to the gate once signed out
+  Future<void> _logOut(String uid) async {
+    setState(() => _loggingOut = true);
+
+    // Read now, since this screen is gone by the time the snackbar shows
     final push = ref.read(pushServiceProvider);
     final auth = ref.read(authServiceProvider);
+    final navigator = Navigator.of(context);
+    // The app-wide messenger, so the snackbar still shows on the auth screen
+    final messenger = ScaffoldMessenger.of(context);
 
-    // Back to the gate first, so Settings isn't left on top of the auth screen
-    Navigator.of(context).popUntil((route) => route.isFirst);
     // Before signing out, while rules still allow the write
     await push.removeToken(uid);
     await auth.signOut();
+
+    // The gate is already showing the auth screen underneath
+    navigator.popUntil((route) => route.isFirst);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Logged out successfully')),
+    );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final uid = ref.watch(authStateProvider).value?.uid;
     final user = uid == null ? null : ref.watch(userProvider(uid)).value;
@@ -92,12 +109,23 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 32),
                 FilledButton(
-                  onPressed: () => _logOut(context, ref, uid),
+                  // Disabled while logging out, so it can't run twice
+                  onPressed: _loggingOut ? null : () => _logOut(uid),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.softPink,
                     foregroundColor: AppColors.primary,
+                    disabledBackgroundColor: AppColors.softPink,
                   ),
-                  child: const Text('Log out'),
+                  child: _loggingOut
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        )
+                      : const Text('Log out'),
                 ),
               ],
             ),

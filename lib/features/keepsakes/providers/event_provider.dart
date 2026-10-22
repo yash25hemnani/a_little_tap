@@ -18,26 +18,34 @@ final eventsProvider = StreamProvider<List<KeepsakeEvent>>((ref) {
   return ref.watch(eventRepositoryProvider).watchEvents(coupleId);
 });
 
-final eventsByDayProvider = Provider<Map<DateTime, List<KeepsakeEvent>>>((ref) {
+// Events on a given UTC day; a lookup rather than a map so yearly events show every year
+final eventsByDayProvider = Provider<List<KeepsakeEvent> Function(DateTime)>((
+  ref,
+) {
   final events = ref.watch(eventsProvider).value ?? const [];
 
-  final byDay = <DateTime, List<KeepsakeEvent>>{};
-
-  for (final e in events) {
-    // e.date is already a UTC day, the same key table_calendar looks up
-    byDay.putIfAbsent(e.date, () => []).add(e);
-  }
-
-  return byDay;
+  return (day) => events.where((e) => e.isOn(day)).toList();
 });
 
-// Soonest event from today on, or null if nothing is planned
-final nextEventProvider = Provider<KeepsakeEvent?>((ref) {
+// Soonest event from today on, with the day it next falls on; null if nothing is planned
+final nextEventProvider = Provider<({KeepsakeEvent event, DateTime on})?>((
+  ref,
+) {
   final events = ref.watch(eventsProvider).value ?? const [];
 
+  // Today's local date as a UTC day, the same form events are stored in
   final now = DateTime.now();
   final today = DateTime.utc(now.year, now.month, now.day);
 
-  // Events arrive sorted by date, so the first match is the soonest
-  return events.where((e) => !e.date.isBefore(today)).firstOrNull;
+  ({KeepsakeEvent event, DateTime on})? soonest;
+
+  for (final e in events) {
+    final on = e.nextOn(today);
+    if (on == null) continue;
+    if (soonest == null || on.isBefore(soonest.on)) {
+      soonest = (event: e, on: on);
+    }
+  }
+
+  return soonest;
 });

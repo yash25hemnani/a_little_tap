@@ -6,10 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final userRepositoryProvider = Provider((ref) => UserRepository());
 
-// A user's doc, live
-final userProvider = StreamProvider.family<UserModel?, String>(
-  (ref, userId) => ref.watch(userRepositoryProvider).watchUser(userId),
-);
+// A user's doc, live. Restarts on every sign-in and out, since Firestore
+// ends the listener with a permission error once signed out
+final userProvider = StreamProvider.family<UserModel?, String>((ref, userId) {
+  final signedInUid = ref.watch(authStateProvider.select((a) => a.value?.uid));
+  if (signedInUid == null) return Stream.value(null);
+
+  return ref.watch(userRepositoryProvider).watchUser(userId);
+});
 
 // The signed-in user's invite code as "XXXX-XXXX", or null while loading
 final inviteCodeProvider = Provider((ref) {

@@ -14,14 +14,19 @@ import 'package:a_little_tap/features/home/widgets/partner_card.dart';
 import 'package:a_little_tap/features/home/widgets/picker_sheet.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
 import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
+import 'package:a_little_tap/features/keepsakes/screens/event_detail_screen.dart';
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
+import 'package:a_little_tap/features/moments/screens/moment_detail_screen.dart';
 import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:a_little_tap/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+  // Switches MainLayout to the Keepsakes tab
+  final VoidCallback? onOpenKeepsakes;
+
+  const HomeScreen({super.key, this.onOpenKeepsakes});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,11 +46,21 @@ class HomeScreen extends ConsumerWidget {
         feelings.where((f) => f.id == lastId).firstOrNull ??
         feelings.firstOrNull;
 
-    final partnerName = ref.watch(partnerProvider)?.displayName ?? '';
+    final partner = ref.watch(partnerProvider);
 
     final lastMoment = ref.watch(lastReceivedProvider);
 
     final nextEvent = ref.watch(nextEventProvider);
+
+    // Spinner until the partner and feelings arrive, so nothing shows half-filled
+    if (partner == null || feeling == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.offWhite,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final partnerName = partner.displayName;
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -63,10 +78,9 @@ class HomeScreen extends ConsumerWidget {
                       child: PartnerCard(
                         name: partnerName,
                         isOnline: false,
-                        lastSeen: DateTime.now().subtract(
-                          const Duration(minutes: 2),
-                        ),
-                        onTap: () {},
+                        subtitle: lastMoment == null
+                            ? null
+                            : 'Last tap • ${formatWhen(context, lastMoment.createdAt)}',
                       ),
                     ),
                     IconButton(
@@ -85,10 +99,7 @@ class HomeScreen extends ConsumerWidget {
 
               Expanded(
                 child: Center(
-                  // Spinner until the feelings stream arrives
-                  child: feeling == null
-                      ? const CircularProgressIndicator()
-                      : PulsingIcon(
+                  child: PulsingIcon(
                           icon: feeling.icon,
                           iconColor: feeling.color,
                           backgroundColor: feeling.circleColor,
@@ -170,10 +181,10 @@ class HomeScreen extends ConsumerWidget {
 
               // Feeling name and hint read as one label under the icon
               Text(
-                feeling?.title ?? '',
+                feeling.title,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: feeling?.color,
+                  color: feeling.color,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -198,7 +209,9 @@ class HomeScreen extends ConsumerWidget {
                 subtitle: lastMoment == null
                     ? 'No taps yet'
                     : '${lastMoment.feeling.title} • ${formatWhen(context, lastMoment.createdAt)}',
-                onTap: () {},
+                onTap: lastMoment == null
+                    ? null
+                    : () => MomentDetailScreen.show(context, lastMoment),
               ),
 
               const SizedBox(height: 12),
@@ -206,11 +219,18 @@ class HomeScreen extends ConsumerWidget {
                 icon: Icons.event_rounded,
                 iconColor: AppColors.lavender,
                 iconBackground: AppColors.lavenderSoft,
-                title: nextEvent?.title ?? 'No plans yet',
+                title: nextEvent?.event.title ?? 'No plans yet',
                 subtitle: nextEvent == null
                     ? 'Add a date in Keepsakes'
-                    : formatEventDay(nextEvent.date),
-                onTap: () {},
+                    : formatEventDay(nextEvent.on),
+                // No event yet: opens the Keepsakes tab to add one
+                onTap: nextEvent == null
+                    ? onOpenKeepsakes
+                    : () => EventDetailScreen.show(
+                        context,
+                        nextEvent.event,
+                        nextEvent.on,
+                      ),
               ),
             ],
           ),

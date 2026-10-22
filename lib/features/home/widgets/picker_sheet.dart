@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/feelings/models/feeling.dart';
 import 'package:flutter/material.dart';
@@ -46,17 +44,6 @@ class PickerSheet extends StatelessWidget {
                   subtitle: f.subtitle,
                   onTap: () => Navigator.pop(context, f),
                 ),
-
-              _FeelingTile(
-                icon: Icons.auto_awesome_rounded,
-                color: AppColors.primary,
-                title: 'Surprise me',
-                subtitle: 'Send a random tap.',
-                onTap: () => Navigator.pop(
-                  context,
-                  feelings[Random().nextInt(feelings.length)],
-                ),
-              ),
 
               const SizedBox(height: 4),
               SizedBox(

@@ -1,14 +1,17 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/keepsakes/models/keepsake_event.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+typedef NewEvent = ({String title, EventType type, bool yearly});
 
 // Asks for a title for an event on the given day; returns it, or null if dismissed
 class AddEventSheet extends StatefulWidget {
   final DateTime day;
   const AddEventSheet({super.key, required this.day});
 
-  static Future<String?> show(BuildContext context, DateTime day) {
-    return showModalBottomSheet<String>(
+  static Future<NewEvent?> show(BuildContext context, DateTime day) {
+    return showModalBottomSheet<NewEvent>(
       context: context,
       // Lets the sheet rise above the keyboard
       isScrollControlled: true,
@@ -27,6 +30,8 @@ class AddEventSheet extends StatefulWidget {
 
 class _AddEventSheetState extends State<AddEventSheet> {
   final _title = TextEditingController();
+  EventType _type = EventType.date;
+  bool _yearly = false; // date isn't yearly by default
 
   @override
   void dispose() {
@@ -36,7 +41,12 @@ class _AddEventSheetState extends State<AddEventSheet> {
 
   void _save() {
     final title = _title.text.trim();
-    if (title.isNotEmpty) Navigator.pop(context, title);
+    if (title.isEmpty) return;
+    Navigator.pop<NewEvent>(context, (
+      title: title,
+      type: _type,
+      yearly: _yearly,
+    ));
   }
 
   @override
@@ -71,6 +81,40 @@ class _AddEventSheetState extends State<AddEventSheet> {
               decoration: const InputDecoration(hintText: 'Movie night'),
             ),
             const SizedBox(height: 16),
+            DropdownButtonFormField<EventType>(
+              initialValue: _type,
+              decoration: const InputDecoration(labelText: 'Type'),
+              borderRadius: BorderRadius.circular(16),
+              dropdownColor: AppColors.surface,
+              items: [
+                for (final t in EventType.values)
+                  DropdownMenuItem(
+                    value: t,
+                    child: Row(
+                      children: [
+                        Icon(t.icon, size: 20, color: AppColors.heart),
+                        const SizedBox(width: 12),
+                        Text(t.label),
+                      ],
+                    ),
+                  ),
+              ],
+              onChanged: (t) {
+                if (t == null) return;
+                setState(() {
+                  _type = t;
+                  _yearly = t.yearlyByDefault;
+                });
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Every year'),
+              value: _yearly,
+              onChanged: (val) => setState(() {
+                _yearly = val;
+              }),
+            ),
             // Disabled until there's a title
             ValueListenableBuilder(
               valueListenable: _title,

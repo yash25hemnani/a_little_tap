@@ -82,7 +82,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // keeps every screen alive, so the heart doesn't restart on tab switch
       body: IndexedStack(
         index: _index,
-        children: const [HomeScreen(), MomentsScreen(), KeepsakesScreen()],
+        children: [
+          HomeScreen(onOpenKeepsakes: () => setState(() => _index = 2)),
+          const MomentsScreen(),
+          const KeepsakesScreen(),
+        ],
       ),
       extendBody: true,
       bottomNavigationBar: Container(

@@ -7,9 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final coupleRepositoryProvider = Provider((ref) => CoupleRepository());
 
-final coupleProvider = StreamProvider.family<Couple?, String>(
-  (ref, coupleId) => ref.watch(coupleRepositoryProvider).watchCouple(coupleId),
-);
+// Restarts on every sign-in and out, since Firestore ends the listener once signed out
+final coupleProvider = StreamProvider.family<Couple?, String>((ref, coupleId) {
+  final signedInUid = ref.watch(authStateProvider.select((a) => a.value?.uid));
+  if (signedInUid == null) return Stream.value(null);
+
+  return ref.watch(coupleRepositoryProvider).watchCouple(coupleId);
+});
 
 // The signed-in user's partner, or null while loading or unpaired
 // watch (not read) so it re-runs as each stream arrives

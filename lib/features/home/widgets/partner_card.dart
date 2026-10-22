@@ -6,19 +6,21 @@ class PartnerCard extends StatelessWidget {
   final String name;
   final bool isOnline;
   final DateTime? lastSeen;
-  final VoidCallback? onTap;
+  // Shown when there's no online or last seen status
+  final String? subtitle;
 
   const PartnerCard({
     super.key,
     required this.name,
     required this.isOnline,
     this.lastSeen,
-    this.onTap,
+    this.subtitle,
   });
 
-  String get _status {
+  // Null hides the status line
+  String? get _status {
     if (isOnline) return 'Online';
-    if (lastSeen == null) return 'Offline';
+    if (lastSeen == null) return subtitle;
 
     final diff = DateTime.now().difference(lastSeen!);
 
@@ -32,49 +34,43 @@ class PartnerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final status = _status;
 
-    return Material(
-      color: Colors.transparent, // shows whatever is behind it
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias, // keeps the ripple inside the corners
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          // no side padding so the avatar lines up with the page edge
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            children: [
-              _Avatar(name: name, isOnline: isOnline),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        textStyle: text.titleMedium,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      _status,
-                      style: GoogleFonts.poppins(
-                        textStyle: text.bodySmall,
-                        color: isOnline
-                            ? AppColors.online
-                            : AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+    return Padding(
+      // no side padding so the avatar lines up with the page edge
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          _Avatar(name: name, isOnline: isOnline),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    textStyle: text.titleMedium,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
+                if (status != null)
+                  Text(
+                    status,
+                    style: GoogleFonts.poppins(
+                      textStyle: text.bodySmall,
+                      color: isOnline
+                          ? AppColors.online
+                          : AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

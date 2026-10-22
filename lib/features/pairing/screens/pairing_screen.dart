@@ -1,7 +1,6 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
-import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:a_little_tap/features/pairing/models/pair_request.dart';
 import 'package:a_little_tap/features/pairing/providers/pairing_provider.dart';
 import 'package:a_little_tap/features/pairing/repositories/pairing_repository.dart';
@@ -244,21 +243,6 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
                     ),
                   ),
                 ],
-
-                // TODO (testing): remove before release
-                const SizedBox(height: 32),
-                TextButton(
-                  onPressed: () async {
-                    final auth = ref.read(authServiceProvider);
-                    final uid = auth.currentUser?.uid;
-                    // Before signing out, while rules still allow the write
-                    if (uid != null) {
-                      await ref.read(pushServiceProvider).removeToken(uid);
-                    }
-                    await auth.signOut();
-                  },
-                  child: const Text('Log out'),
-                ),
               ],
             ),
           ),

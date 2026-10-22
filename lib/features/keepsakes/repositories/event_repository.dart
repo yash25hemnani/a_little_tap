@@ -20,6 +20,8 @@ class EventRepository {
     required String coupleId,
     required String title,
     required DateTime date,
+    required EventType type,
+    required bool yearly,
     required String createdBy,
   }) async {
     final event = KeepsakeEvent(
@@ -27,6 +29,8 @@ class EventRepository {
       title: title,
       // Saved as UTC midnight so both phones show the same day in any timezone
       date: DateTime.utc(date.year, date.month, date.day),
+      type: type,
+      yearly: yearly,
       createdBy: createdBy,
       createdAt: DateTime.now(),
     );

@@ -80,7 +80,8 @@ class PushService {
         });
       }
 
-      await _messaging.unregister();
+      // Not awaited: it doesn't need auth, so sign-out doesn't wait on it
+      unawaited(_messaging.unregister().catchError((Object _) {}));
       _fid = null;
     } catch (_) {
       // Logging out shouldn't fail because of this

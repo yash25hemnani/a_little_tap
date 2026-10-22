@@ -3,10 +3,14 @@ import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
 import 'package:a_little_tap/features/couple/providers/couple_provider.dart';
 import 'package:a_little_tap/features/home/widgets/info_card.dart';
+import 'package:a_little_tap/features/keepsakes/models/keepsake_event.dart';
 import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
+import 'package:a_little_tap/features/keepsakes/screens/event_detail_screen.dart';
 import 'package:a_little_tap/features/keepsakes/widgets/add_event_sheet.dart';
+import 'package:a_little_tap/features/keepsakes/widgets/month_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 // The couple's shared calendar: dots on days with events, and the selected day's list below
@@ -19,14 +23,17 @@ class KeepsakesScreen extends ConsumerStatefulWidget {
 
 class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
   DateTime _focusedDay = DateTime.now();
-  // UTC day, the same key eventsByDayProvider uses
-  DateTime _selectedDay = _utcDay(DateTime.now());
+  // UTC day, the same form events are stored in; null after moving to another month
+  DateTime? _selectedDay = _utcDay(DateTime.now());
 
   static DateTime _utcDay(DateTime d) => DateTime.utc(d.year, d.month, d.day);
 
   Future<void> _addEvent() async {
-    final title = await AddEventSheet.show(context, _selectedDay);
-    if (title == null) return;
+    final day = _selectedDay;
+    if (day == null) return;
+
+    final picked = await AddEventSheet.show(context, day);
+    if (picked == null) return;
 
     final uid = ref.read(authStateProvider).value?.uid;
 
@@ -40,10 +47,23 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
         .read(eventRepositoryProvider)
         .add(
           coupleId: coupleId,
-          title: title,
-          date: _selectedDay,
+          title: picked.title,
+          date: day,
+          type: picked.type,
+          yearly: picked.yearly,
           createdBy: uid,
         );
+  }
+
+  // Jumps the calendar to a month picked from the sheet and clears the selected day
+  Future<void> _pickMonth(DateTime month) async {
+    final picked = await MonthPickerSheet.show(context, month);
+    if (picked == null) return;
+
+    setState(() {
+      _focusedDay = picked;
+      _selectedDay = null;
+    });
   }
 
   @override
@@ -52,7 +72,10 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
     final uid = ref.watch(authStateProvider).value?.uid;
     final partnerName = ref.watch(partnerProvider)?.displayName ?? 'partner';
     final byDay = ref.watch(eventsByDayProvider);
-    final dayEvents = byDay[_selectedDay] ?? const [];
+    final selected = _selectedDay;
+    final dayEvents = selected == null
+        ? const <KeepsakeEvent>[]
+        : byDay(selected);
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -78,7 +101,8 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
                       icon: const Icon(Icons.add_rounded),
                       color: AppColors.textSecondary,
                       tooltip: 'Add date',
-                      onPressed: _addEvent,
+                      // Disabled until a day is selected
+                      onPressed: selected == null ? null : _addEvent,
                     ),
                   ],
                 ),
@@ -103,16 +127,16 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
                       _focusedDay = focused;
                     });
                   },
-                  eventLoader: (day) => byDay[day] ?? const [],
-                  onPageChanged: (focused) => _focusedDay = focused,
+                  eventLoader: byDay,
+                  // Swiping to another month clears the selected day too
+                  onPageChanged: (focused) => setState(() {
+                    _focusedDay = focused;
+                    _selectedDay = null;
+                  }),
                   startingDayOfWeek: StartingDayOfWeek.monday,
                   headerStyle: HeaderStyle(
                     formatButtonVisible: false,
                     titleCentered: true,
-                    titleTextStyle: text.titleMedium!.copyWith(
-                      color: AppColors.text,
-                      fontWeight: FontWeight.w600,
-                    ),
                     leftChevronIcon: const Icon(
                       Icons.chevron_left_rounded,
                       color: AppColors.textSecondary,
@@ -157,6 +181,35 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
                     markersAnchor: 2,
                   ),
                   calendarBuilders: CalendarBuilders(
+                    // Tappable month title with a ▾ that opens the month picker
+                    headerTitleBuilder: (context, month) => Center(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _pickMonth(month),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                DateFormat('MMMM yyyy').format(month),
+                                style: text.titleMedium!.copyWith(
+                                  color: AppColors.text,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_drop_down_rounded,
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     // White on the selected day's pink circle, pink everywhere else
                     singleMarkerBuilder: (context, day, event) => Container(
                       width: 5,
@@ -178,7 +231,9 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
                 child: dayEvents.isEmpty
                     ? Center(
                         child: Text(
-                          'Nothing planned',
+                          selected == null
+                              ? 'Select a date to see events'
+                              : 'Nothing planned',
                           style: text.bodyMedium?.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -190,14 +245,22 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, i) {
                           final e = dayEvents[i];
+                          // Yearly events show which year this is, e.g. "3 years"
+                          final years = e.yearly ? e.yearsOn(selected!) : 0;
+                          final addedBy = e.createdBy == uid
+                              ? 'Added by you'
+                              : 'Added by $partnerName';
+
                           return InfoCard(
-                            icon: Icons.event_rounded,
+                            icon: e.type.icon,
                             iconColor: AppColors.lavender,
                             iconBackground: AppColors.lavenderSoft,
                             title: e.title,
-                            subtitle: e.createdBy == uid
-                                ? 'Added by you'
-                                : 'Added by $partnerName',
+                            subtitle: years > 0
+                                ? '${years == 1 ? '1 year' : '$years years'} • $addedBy'
+                                : addedBy,
+                            onTap: () =>
+                                EventDetailScreen.show(context, e, selected!),
                           );
                         },
                       ),
