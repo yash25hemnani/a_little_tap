@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
@@ -11,6 +14,32 @@ class PushService {
 
   StreamSubscription<String>? _registeredSub;
   String? _fid; // Phone's FID, once registered
+
+  Future<void> notifyPartner({
+    required String coupleId,
+    required String momentId,
+  }) async {
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+
+      if (token == null) return;
+
+      final res = await http.post(
+        Uri.parse('https://worker.little-tap.workers.dev'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'coupleId': coupleId, 'momentId': momentId}),
+      );
+
+      // http doesn't throw on 4xx/5xx, so log the result
+      debugPrint('push: worker ${res.statusCode} ${res.body}');
+    } catch (e) {
+      // The tap is already saved, so a failed push is only logged
+      debugPrint('push: worker call failed $e');
+    }
+  }
 
   // Ask permission, then save the FID whenever FCM hands one out
   Future<void> init(String uid) async {

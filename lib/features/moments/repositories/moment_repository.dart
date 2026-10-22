@@ -15,7 +15,7 @@ class MomentRepository {
         (snap) => snap.docs.map((d) => Moment.fromMap(d.id, d.data())).toList(),
       );
 
-  Future<void> send({
+  Future<String> send({
     required String coupleId,
     required String fromUid,
     required Feeling feeling,
@@ -27,10 +27,12 @@ class MomentRepository {
       createdAt: DateTime.now(),
     );
 
-    await _db
+    final doc = await _db
         .collection('couples')
         .doc(coupleId)
         .collection('moments')
         .add(moment.toMap());
+
+    return doc.id; // the worker needs this to find the moment
   }
 }

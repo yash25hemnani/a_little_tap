@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/core/utils/format_event_day.dart';
 import 'package:a_little_tap/core/utils/format_when.dart';
@@ -13,6 +15,7 @@ import 'package:a_little_tap/features/home/widgets/picker_sheet.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
 import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
+import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:a_little_tap/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -99,13 +102,24 @@ class HomeScreen extends ConsumerWidget {
                               partnerName: partnerName,
                               feeling: feeling,
                               vibrate: user?.vibrationEnabled ?? true,
-                              send: () => ref
-                                  .read(momentRepositoryProvider)
-                                  .send(
-                                    coupleId: coupleId,
-                                    fromUid: uid,
-                                    feeling: feeling,
-                                  ),
+                              send: () async {
+                                final momentId = await ref
+                                    .read(momentRepositoryProvider)
+                                    .send(
+                                      coupleId: coupleId,
+                                      fromUid: uid,
+                                      feeling: feeling,
+                                    );
+
+                                unawaited(
+                                  ref
+                                      .read(pushServiceProvider)
+                                      .notifyPartner(
+                                        coupleId: coupleId,
+                                        momentId: momentId,
+                                      ),
+                                );
+                              },
                             );
                           },
                           onLongPress: () async {
@@ -130,13 +144,24 @@ class HomeScreen extends ConsumerWidget {
                               partnerName: partnerName,
                               feeling: picked,
                               vibrate: user?.vibrationEnabled ?? true,
-                              send: () => ref
-                                  .read(momentRepositoryProvider)
-                                  .send(
-                                    coupleId: coupleId,
-                                    fromUid: uid,
-                                    feeling: picked,
-                                  ),
+                              send: () async {
+                                final momentId = await ref
+                                    .read(momentRepositoryProvider)
+                                    .send(
+                                      coupleId: coupleId,
+                                      fromUid: uid,
+                                      feeling: picked,
+                                    );
+
+                                unawaited(
+                                  ref
+                                      .read(pushServiceProvider)
+                                      .notifyPartner(
+                                        coupleId: coupleId,
+                                        momentId: momentId,
+                                      ),
+                                );
+                              },
                             );
                           },
                         ),
