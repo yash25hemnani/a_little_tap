@@ -1,22 +1,58 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
+import 'package:a_little_tap/features/auth/providers/user_provider.dart';
+import 'package:a_little_tap/features/couple/providers/couple_provider.dart';
+import 'package:a_little_tap/features/home/widgets/info_card.dart';
+import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
+import 'package:a_little_tap/features/keepsakes/widgets/add_event_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-// Shared space for the couple: notes, calendar, images, streaks (coming later)
-class KeepsakesScreen extends StatefulWidget {
+// The couple's shared calendar: dots on days with events, and the selected day's list below
+class KeepsakesScreen extends ConsumerStatefulWidget {
   const KeepsakesScreen({super.key});
 
   @override
-  State<KeepsakesScreen> createState() => _KeepsakesScreenState();
+  ConsumerState<KeepsakesScreen> createState() => _KeepsakesScreenState();
 }
 
-class _KeepsakesScreenState extends State<KeepsakesScreen> {
+class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  // UTC day, the same key eventsByDayProvider uses
+  DateTime _selectedDay = _utcDay(DateTime.now());
+
+  static DateTime _utcDay(DateTime d) => DateTime.utc(d.year, d.month, d.day);
+
+  Future<void> _addEvent() async {
+    final title = await AddEventSheet.show(context, _selectedDay);
+    if (title == null) return;
+
+    final uid = ref.read(authStateProvider).value?.uid;
+
+    if (uid == null) return;
+
+    final coupleId = ref.read(userProvider(uid)).value?.coupleId;
+
+    if (coupleId == null) return;
+
+    ref
+        .read(eventRepositoryProvider)
+        .add(
+          coupleId: coupleId,
+          title: title,
+          date: _selectedDay,
+          createdBy: uid,
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final uid = ref.watch(authStateProvider).value?.uid;
+    final partnerName = ref.watch(partnerProvider)?.displayName ?? 'partner';
+    final byDay = ref.watch(eventsByDayProvider);
+    final dayEvents = byDay[_selectedDay] ?? const [];
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -27,17 +63,28 @@ class _KeepsakesScreenState extends State<KeepsakesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Keepsakes',
-                  style: text.titleLarge?.copyWith(
-                    color: AppColors.text,
-                    fontWeight: FontWeight.w600,
-                  ),
+                padding: const EdgeInsets.only(left: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Keepsakes',
+                      style: text.titleLarge?.copyWith(
+                        color: AppColors.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.add_rounded),
+                      color: AppColors.textSecondary,
+                      tooltip: 'Add date',
+                      onPressed: _addEvent,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
-              // Callender in a white card
+              // Calendar in a white card
               Container(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
                 decoration: BoxDecoration(
@@ -52,10 +99,11 @@ class _KeepsakesScreenState extends State<KeepsakesScreen> {
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                   onDaySelected: (selected, focused) {
                     setState(() {
-                      _selectedDay = selected;
+                      _selectedDay = _utcDay(selected);
                       _focusedDay = focused;
                     });
                   },
+                  eventLoader: (day) => byDay[day] ?? const [],
                   onPageChanged: (focused) => _focusedDay = focused,
                   startingDayOfWeek: StartingDayOfWeek.monday,
                   headerStyle: HeaderStyle(
@@ -102,8 +150,57 @@ class _KeepsakesScreenState extends State<KeepsakesScreen> {
                       color: AppColors.onPrimary,
                       fontWeight: FontWeight.w600,
                     ),
+                    // One dot per day, however many events it has
+                    markersMaxCount: 1,
+                    markerSize: 5,
+                    // Raises the dot from the circle's edge to just under the number
+                    markersAnchor: 2,
+                  ),
+                  calendarBuilders: CalendarBuilders(
+                    // White on the selected day's pink circle, pink everywhere else
+                    singleMarkerBuilder: (context, day, event) => Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(horizontal: 0.3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSameDay(day, _selectedDay)
+                            ? AppColors.onPrimary
+                            : AppColors.heart,
+                      ),
+                    ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+              // Selected day's events
+              Expanded(
+                child: dayEvents.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nothing planned',
+                          style: text.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: dayEvents.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) {
+                          final e = dayEvents[i];
+                          return InfoCard(
+                            icon: Icons.event_rounded,
+                            iconColor: AppColors.lavender,
+                            iconBackground: AppColors.lavenderSoft,
+                            title: e.title,
+                            subtitle: e.createdBy == uid
+                                ? 'Added by you'
+                                : 'Added by $partnerName',
+                          );
+                        },
+                      ),
               ),
             ],
           ),

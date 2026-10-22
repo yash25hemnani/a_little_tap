@@ -25,9 +25,12 @@ class AuthGate extends ConsumerWidget {
           loading: () => const _Loading(),
           error: (e, _) => const PairingScreen(),
           // null doc or no coupleId → still needs pairing
-          data: (u) => (u?.isPaired ?? false)
-              ? const MainLayout()
-              : const PairingScreen(),
+          data: (u) {
+            debugPrint('gate: coupleId=${u?.coupleId}');
+            return (u?.isPaired ?? false)
+                ? const MainLayout()
+                : const PairingScreen();
+          },
         );
       },
     );

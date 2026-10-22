@@ -1,4 +1,5 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
+import 'package:a_little_tap/core/utils/format_event_day.dart';
 import 'package:a_little_tap/core/utils/format_when.dart';
 import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
@@ -10,6 +11,7 @@ import 'package:a_little_tap/features/home/widgets/info_card.dart';
 import 'package:a_little_tap/features/home/widgets/partner_card.dart';
 import 'package:a_little_tap/features/home/widgets/picker_sheet.dart';
 import 'package:a_little_tap/features/home/widgets/pulsing_icon.dart';
+import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
 import 'package:a_little_tap/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +41,8 @@ class HomeScreen extends ConsumerWidget {
     final partnerName = ref.watch(partnerProvider)?.displayName ?? '';
 
     final lastMoment = ref.watch(lastReceivedProvider);
+
+    final nextEvent = ref.watch(nextEventProvider);
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -177,8 +181,10 @@ class HomeScreen extends ConsumerWidget {
                 icon: Icons.event_rounded,
                 iconColor: AppColors.lavender,
                 iconBackground: AppColors.lavenderSoft,
-                title: 'Movie night',
-                subtitle: 'Sat, Oct 25 • in 5 days',
+                title: nextEvent?.title ?? 'No plans yet',
+                subtitle: nextEvent == null
+                    ? 'Add a date in Keepsakes'
+                    : formatEventDay(nextEvent.date),
                 onTap: () {},
               ),
             ],
