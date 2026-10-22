@@ -1,6 +1,7 @@
 import 'package:a_little_tap/core/theme/app_colors.dart';
 import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
+import 'package:a_little_tap/features/feelings/screens/feelings_screen.dart';
 import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,6 +66,28 @@ class SettingsScreen extends ConsumerWidget {
                       onChanged: (v) =>
                           repo.setSetting(uid, 'vibrationEnabled', v),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  child: Text(
+                    'Personalize',
+                    style: text.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                _Card(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.favorite_border_rounded),
+                      title: const Text('Feelings'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => Navigator.of(context)
+                                            .push(MaterialPageRoute(builder: (_) => FeelingsScreen())),
+                    )
                   ],
                 ),
                 const SizedBox(height: 32),
