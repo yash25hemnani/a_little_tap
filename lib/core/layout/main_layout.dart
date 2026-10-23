@@ -13,6 +13,7 @@ import 'package:a_little_tap/features/moments/screens/moments_screen.dart';
 import 'package:a_little_tap/features/keepsakes/screens/keepsakes_screen.dart';
 import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:a_little_tap/features/notifications/services/tap_notifier.dart';
+import 'package:a_little_tap/features/presence/providers/presence_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -40,6 +41,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
     if (uid != null) {
       ref.read(pushServiceProvider).init(uid);
+      ref.read(presenceServiceProvider).start(uid);
     }
 
     // Tapped while the app was in the background

@@ -8,6 +8,8 @@ class UserModel {
   final String? coupleId; // null until paired
   final String? lastFeelingId;
   final String? inviteCode;
+  final bool online;
+  final DateTime? lastSeen;
   final bool pushEnabled;
   final bool vibrationEnabled;
   final DateTime createdAt;
@@ -20,6 +22,8 @@ class UserModel {
     this.coupleId,
     this.lastFeelingId,
     this.inviteCode,
+    this.online = false,
+    this.lastSeen,
     this.pushEnabled = true,
     this.vibrationEnabled = true,
     required this.createdAt,
@@ -29,6 +33,12 @@ class UserModel {
 
   // "Varsha", or "varsha.k" from the email if no name yet
   String get displayName => name ?? email.split('@').first;
+
+  // Online only if the last heartbeat is recent, so a killed app goes offline
+  bool get isOnline =>
+      online &&
+      lastSeen != null &&
+      DateTime.now().difference(lastSeen!) < const Duration(minutes: 2);
 
   Map<String, dynamic> toMap() => {
     'email': email,
@@ -47,6 +57,9 @@ class UserModel {
     coupleId: map['coupleId'],
     lastFeelingId: map['lastFeelingId'],
     inviteCode: map['inviteCode'],
+    online: map['online'] as bool? ?? false,
+    // Null while a server timestamp is still pending
+    lastSeen: (map['lastSeen'] as Timestamp?)?.toDate(),
     // Missing on older docs, so default to on
     pushEnabled: map['pushEnabled'] as bool? ?? true,
     vibrationEnabled: map['vibrationEnabled'] as bool? ?? true,

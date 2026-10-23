@@ -3,6 +3,7 @@ import 'package:a_little_tap/features/auth/providers/auth_provider.dart';
 import 'package:a_little_tap/features/auth/providers/user_provider.dart';
 import 'package:a_little_tap/features/feelings/screens/feelings_screen.dart';
 import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
+import 'package:a_little_tap/features/presence/providers/presence_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,12 +23,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     // Read now, since this screen is gone by the time the snackbar shows
     final push = ref.read(pushServiceProvider);
+    final presence = ref.read(presenceServiceProvider);
     final auth = ref.read(authServiceProvider);
     final navigator = Navigator.of(context);
     // The app-wide messenger, so the snackbar still shows on the auth screen
     final messenger = ScaffoldMessenger.of(context);
 
-    // Before signing out, while rules still allow the write
+    // Before signing out, while rules still allow the writes
+    await presence.stop();
     await push.removeToken(uid);
     await auth.signOut();
 

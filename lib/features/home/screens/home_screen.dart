@@ -18,6 +18,7 @@ import 'package:a_little_tap/features/keepsakes/screens/event_detail_screen.dart
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
 import 'package:a_little_tap/features/moments/screens/moment_detail_screen.dart';
 import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
+import 'package:a_little_tap/features/presence/providers/presence_provider.dart';
 import 'package:a_little_tap/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +53,9 @@ class HomeScreen extends ConsumerWidget {
 
     final nextEvent = ref.watch(nextEventProvider);
 
+    // Rebuilds every 30s so the partner drops offline once their heartbeat stops
+    ref.watch(clockProvider);
+
     // Spinner until the partner and feelings arrive, so nothing shows half-filled
     if (partner == null || feeling == null) {
       return const Scaffold(
@@ -77,7 +81,8 @@ class HomeScreen extends ConsumerWidget {
                     Expanded(
                       child: PartnerCard(
                         name: partnerName,
-                        isOnline: false,
+                        isOnline: partner.isOnline,
+                        lastSeen: partner.lastSeen,
                         subtitle: lastMoment == null
                             ? null
                             : 'Last tap • ${formatWhen(context, lastMoment.createdAt)}',

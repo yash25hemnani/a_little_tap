@@ -61,4 +61,12 @@ class UserRepository {
   Future<void> setSetting(String uid, String field, bool value) {
     return _db.collection('users').doc(uid).update({field: value});
   }
+
+  // Online status plus the server's time, so both phones agree on lastSeen
+  Future<void> setPresence(String uid, bool online) {
+    return _db.collection('users').doc(uid).update({
+      'online': online,
+      'lastSeen': FieldValue.serverTimestamp(),
+    });
+  }
 }
