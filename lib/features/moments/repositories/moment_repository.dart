@@ -5,11 +5,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class MomentRepository {
   final _db = FirebaseFirestore.instance;
 
-  Stream<List<Moment>> watchMoments(String coupleId) => _db
+  Stream<List<Moment>> watchMoments(String coupleId, String fromUid, int limit) => _db
       .collection('couples')
       .doc(coupleId)
       .collection('moments')
+      .where('fromUid', isEqualTo: fromUid)
       .orderBy('createdAt', descending: true)
+      .limit(limit)
       .snapshots()
       .map(
         (snap) => snap.docs.map((d) => Moment.fromMap(d.id, d.data())).toList(),
