@@ -19,6 +19,11 @@ Future<void> _onBackgroundMessage(RemoteMessage message) async {
 
   await TapNotifier.init();
 
+  if (_isReminder(message)) {
+    await _showReminder(message);
+    return;
+  }
+
   final colorValue = int.tryParse(data['color'] as String? ?? '');
   await TapNotifier.show(
     data['title'] ?? '',
@@ -37,11 +42,29 @@ Future<void> _onBackgroundMessage(RemoteMessage message) async {
   await playVibration(steps);
 }
 
+bool _isReminder(RemoteMessage message) => message.data['type'] == 'reminder';
+
+Future<void> _showReminder(RemoteMessage message) {
+  final data = message.data;
+
+  return TapNotifier.showReminder(
+    data['title'] ?? '',
+    data['body'] ?? '',
+    data['eventId'] ?? '',
+  );
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await TapNotifier.init();
   FirebaseMessaging.onBackgroundMessage(_onBackgroundMessage);
+
+  // Data-only pushes show nothing while the app is open; taps are handled by
+  // the Firestore listener, so only reminders need showing here
+  FirebaseMessaging.onMessage.listen((message) {
+    if (_isReminder(message)) _showReminder(message);
+  });
   runApp(ProviderScope(child: const MyApp()));
 }
 

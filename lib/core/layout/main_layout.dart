@@ -10,11 +10,14 @@ import 'package:a_little_tap/features/home/screens/received_screen.dart';
 import 'package:a_little_tap/features/moments/models/moment.dart';
 import 'package:a_little_tap/features/moments/providers/moment_provider.dart';
 import 'package:a_little_tap/features/moments/screens/moments_screen.dart';
+import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
+import 'package:a_little_tap/features/keepsakes/screens/event_detail_screen.dart';
 import 'package:a_little_tap/features/keepsakes/screens/keepsakes_screen.dart';
 import 'package:a_little_tap/features/notifications/providers/push_provider.dart';
 import 'package:a_little_tap/features/notifications/services/tap_notifier.dart';
 import 'package:a_little_tap/features/presence/providers/presence_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
@@ -29,7 +32,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   final _openedAt = DateTime.now();
   ValueNotifier<Feeling>? _received; // set while ReceivedScreen is open
   bool _openOnLoad = false; // a notification was tapped before moments loaded
-  StreamSubscription<void>? _openedSub;
+  String? _openEventOnLoad; // a reminder was tapped before events loaded
+  StreamSubscription<NotificationResponse>? _openedSub;
 
   static const _barRadius = BorderRadius.vertical(top: Radius.circular(24));
 
@@ -45,11 +49,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
 
     // Tapped while the app was in the background
-    _openedSub = TapNotifier.opened.listen((_) => _openFromNotification());
+    _openedSub = TapNotifier.opened.listen(_onNotificationOpened);
 
     // Tapped while the app was closed
-    TapNotifier.consumeLaunchTap().then((launched) {
-      if (launched && mounted) _openFromNotification();
+    TapNotifier.consumeLaunch().then((response) {
+      if (response != null && mounted) _onNotificationOpened(response);
     });
   }
 
@@ -57,6 +61,36 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   void dispose() {
     _openedSub?.cancel();
     super.dispose();
+  }
+
+  // No payload = a tap notification; a payload = a reminder's eventId
+  void _onNotificationOpened(NotificationResponse response) {
+    final eventId = response.payload;
+
+    if (eventId == null || eventId.isEmpty) {
+      _openFromNotification();
+    } else {
+      _openEvent(eventId);
+    }
+  }
+
+  // Opens the event on its next day, so yearly events show the right year count
+  void _openEvent(String eventId) {
+    final events = ref.read(eventsProvider).value;
+
+    if (events == null) {
+      _openEventOnLoad = eventId;
+      return;
+    }
+
+    // Gone if it was deleted after the reminder was sent
+    final event = events.where((e) => e.id == eventId).firstOrNull;
+    if (event == null) return;
+
+    final now = DateTime.now();
+    final today = DateTime.utc(now.year, now.month, now.day);
+
+    EventDetailScreen.show(context, event, event.nextOn(today) ?? event.date);
   }
 
   // The tray only holds the newest tap, so open that one
@@ -120,6 +154,15 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       if (next.createdAt.isBefore(_openedAt)) return;
 
       _showReceived(next);
+    });
+
+    // Events finished loading after a reminder was tapped
+    ref.listen(eventsProvider, (_, next) {
+      final eventId = _openEventOnLoad;
+      if (eventId == null || !next.hasValue) return;
+
+      _openEventOnLoad = null;
+      _openEvent(eventId);
     });
 
     return Scaffold(

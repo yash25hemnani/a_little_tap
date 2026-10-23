@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The notification icon is only named from Dart, so release builds must not strip it -->
+<!-- The notification icons are only named from Dart, so release builds must not strip them -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_stat_heart" />
+    tools:keep="@drawable/ic_stat_heart,@drawable/ic_stat_calendar" />
