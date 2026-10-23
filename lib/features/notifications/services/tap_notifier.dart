@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show Color;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -18,11 +19,18 @@ class TapNotifier {
   // Same id every time, so a new tap replaces the last one in the tray
   static const _tapId = 0;
 
+  static final _opened = StreamController<void>.broadcast();
+
+  static Stream<void> get opened => _opened.stream;
+
+  static bool _launchChecked = false;
+
   static Future<void> init() async {
     await _plugin.initialize(
       settings: InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
+      onDidReceiveNotificationResponse: (_) => _opened.add(null),
     );
 
     await _plugin
@@ -30,6 +38,17 @@ class TapNotifier {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(_channel);
+  }
+
+  // True once, when a tap notification launched the app from closed
+  static Future<bool> consumeLaunchTap() async {
+    if (_launchChecked) return false;
+
+    _launchChecked = true;
+
+    return (await _plugin.getNotificationAppLaunchDetails())
+            ?.didNotificationLaunchApp ??
+        false;
   }
 
   // color tints the small icon and app name; null keeps the default

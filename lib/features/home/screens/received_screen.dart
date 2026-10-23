@@ -151,6 +151,17 @@ class _ReceivedScreenState extends State<ReceivedScreen> {
                       ),
                     ),
                   ),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        color: AppColors.textSecondary,
+                        onPressed: _close,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
