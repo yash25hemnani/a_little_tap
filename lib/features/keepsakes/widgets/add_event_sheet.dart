@@ -3,14 +3,26 @@ import 'package:a_little_tap/features/keepsakes/models/keepsake_event.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-typedef NewEvent = ({String title, EventType type, bool yearly});
+typedef NewEvent = ({
+  String title,
+  DateTime date,
+  EventType type,
+  bool yearly,
+});
 
-// Asks for a title for an event on the given day; returns it, or null if dismissed
+// Adds an event on the given day, or edits `initial` when given.
+// Returns the details, or null if dismissed
 class AddEventSheet extends StatefulWidget {
   final DateTime day;
-  const AddEventSheet({super.key, required this.day});
+  final KeepsakeEvent? initial;
 
-  static Future<NewEvent?> show(BuildContext context, DateTime day) {
+  const AddEventSheet({super.key, required this.day, this.initial});
+
+  static Future<NewEvent?> show(
+    BuildContext context,
+    DateTime day, {
+    KeepsakeEvent? initial,
+  }) {
     return showModalBottomSheet<NewEvent>(
       context: context,
       // Lets the sheet rise above the keyboard
@@ -20,7 +32,7 @@ class AddEventSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => AddEventSheet(day: day),
+      builder: (_) => AddEventSheet(day: day, initial: initial),
     );
   }
 
@@ -30,8 +42,25 @@ class AddEventSheet extends StatefulWidget {
 
 class _AddEventSheetState extends State<AddEventSheet> {
   final _title = TextEditingController();
+  late DateTime _day; // UTC day, the same form events are stored in
   EventType _type = EventType.date;
   bool _yearly = false; // date isn't yearly by default
+
+  bool get _editing => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _day = widget.day;
+
+    final e = widget.initial;
+    if (e != null) {
+      _title.text = e.title;
+      _day = e.date;
+      _type = e.type;
+      _yearly = e.yearly;
+    }
+  }
 
   @override
   void dispose() {
@@ -39,11 +68,25 @@ class _AddEventSheetState extends State<AddEventSheet> {
     super.dispose();
   }
 
+  // Tapping the date at the top moves the event to another day
+  Future<void> _pickDay() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(_day.year, _day.month, _day.day),
+      firstDate: DateTime(1950),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+
+    setState(() => _day = DateTime.utc(picked.year, picked.month, picked.day));
+  }
+
   void _save() {
     final title = _title.text.trim();
     if (title.isEmpty) return;
     Navigator.pop<NewEvent>(context, (
       title: title,
+      date: _day,
       type: _type,
       yearly: _yearly,
     ));
@@ -66,15 +109,21 @@ class _AddEventSheetState extends State<AddEventSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              DateFormat('EEE, MMM d').format(widget.day),
-              textAlign: TextAlign.center,
-              style: text.titleMedium?.copyWith(color: AppColors.text),
+            Center(
+              child: TextButton.icon(
+                onPressed: _pickDay,
+                icon: const Icon(Icons.calendar_today_rounded, size: 18),
+                label: Text(
+                  DateFormat('EEE, MMM d, y').format(_day),
+                  style: text.titleMedium?.copyWith(color: AppColors.text),
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             TextField(
               controller: _title,
-              autofocus: true,
+              // Keyboard only pops up for a new event
+              autofocus: !_editing,
               textCapitalization: TextCapitalization.sentences,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _save(),

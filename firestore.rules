@@ -67,9 +67,13 @@ service cloud.firestore {
       match /events/{eventId} {
         // Either partner can see and delete any event
         allow read, delete: if isMember();
-        // Only add as yourself; no edits
+        // Only add as yourself
         allow create: if isMember()
           && request.resource.data.createdBy == request.auth.uid;
+        // Either partner can edit; who added it and when stay the same
+        allow update: if isMember()
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt;
       }
     }
 

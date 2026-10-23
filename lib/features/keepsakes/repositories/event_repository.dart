@@ -42,6 +42,27 @@ class EventRepository {
         .add(event.toMap());
   }
 
+  // Only the editable fields, so createdBy and createdAt stay as they were
+  Future<void> update({
+    required String coupleId,
+    required String eventId,
+    required String title,
+    required DateTime date,
+    required EventType type,
+    required bool yearly,
+  }) => _db
+      .collection('couples')
+      .doc(coupleId)
+      .collection('events')
+      .doc(eventId)
+      .update({
+        'title': title,
+        // Same UTC-midnight form as add
+        'date': Timestamp.fromDate(DateTime.utc(date.year, date.month, date.day)),
+        'type': type.name,
+        'yearly': yearly,
+      });
+
   Future<void> delete(String coupleId, String eventId) => _db
       .collection('couples')
       .doc(coupleId)

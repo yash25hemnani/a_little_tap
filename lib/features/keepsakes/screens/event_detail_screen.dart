@@ -5,6 +5,7 @@ import 'package:a_little_tap/features/auth/providers/user_provider.dart';
 import 'package:a_little_tap/features/couple/providers/couple_provider.dart';
 import 'package:a_little_tap/features/keepsakes/models/keepsake_event.dart';
 import 'package:a_little_tap/features/keepsakes/providers/event_provider.dart';
+import 'package:a_little_tap/features/keepsakes/widgets/add_event_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -29,8 +30,56 @@ class EventDetailScreen extends ConsumerWidget {
     );
   }
 
+  // Opens the add sheet filled in; saving updates the event for both partners
+  Future<void> _edit(
+    BuildContext context,
+    WidgetRef ref,
+    KeepsakeEvent current,
+  ) async {
+    final picked = await AddEventSheet.show(
+      context,
+      current.date,
+      initial: current,
+    );
+    if (picked == null || !context.mounted) return;
+
+    final uid = ref.read(authStateProvider).value?.uid;
+    if (uid == null) return;
+
+    final coupleId = ref.read(userProvider(uid)).value?.coupleId;
+    if (coupleId == null) return;
+
+    // Read now, in case the screen closes before the save finishes
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Finishes once the server has the change
+    try {
+      await ref
+          .read(eventRepositoryProvider)
+          .update(
+            coupleId: coupleId,
+            eventId: current.id,
+            title: picked.title,
+            date: picked.date,
+            type: picked.type,
+            yearly: picked.yearly,
+          );
+
+      messenger.showSnackBar(const SnackBar(content: Text('Event updated')));
+    } catch (e) {
+      debugPrint('event: update failed $e');
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't save changes")),
+      );
+    }
+  }
+
   // Asks first, then removes the event for both partners and closes the screen
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    KeepsakeEvent current,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -38,9 +87,9 @@ class EventDetailScreen extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
         title: const Text('Delete date?'),
         content: Text(
-          event.yearly
-              ? '"${event.title}" will be removed from every year.'
-              : '"${event.title}" will be removed.',
+          current.yearly
+              ? '"${current.title}" will be removed from every year.'
+              : '"${current.title}" will be removed.',
         ),
         actions: [
           TextButton(
@@ -65,7 +114,7 @@ class EventDetailScreen extends ConsumerWidget {
     final coupleId = ref.read(userProvider(uid)).value?.coupleId;
     if (coupleId == null) return;
 
-    ref.read(eventRepositoryProvider).delete(coupleId, event.id);
+    ref.read(eventRepositoryProvider).delete(coupleId, current.id);
 
     if (context.mounted) Navigator.of(context).pop();
   }
@@ -77,9 +126,22 @@ class EventDetailScreen extends ConsumerWidget {
     final uid = ref.watch(authStateProvider).value?.uid;
     final partnerName = ref.watch(partnerProvider)?.displayName ?? 'partner';
 
+    // The live copy, so edits from either phone show straight away
+    final event =
+        ref
+            .watch(eventsProvider)
+            .value
+            ?.where((e) => e.id == this.event.id)
+            .firstOrNull ??
+        this.event;
+
     final now = DateTime.now();
-    final next = event.nextOn(DateTime.utc(now.year, now.month, now.day));
-    final years = event.yearly ? event.yearsOn(day) : 0;
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final next = event.nextOn(today);
+
+    // If an edit moved the event off the day it was opened for, count years from its next day
+    final shownDay = event.isOn(day) ? day : (next ?? event.date);
+    final years = event.yearly ? event.yearsOn(shownDay) : 0;
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -158,8 +220,20 @@ class EventDetailScreen extends ConsumerWidget {
               const Spacer(),
               SizedBox(
                 width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _edit(context, ref, event),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Edit'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => _delete(context, ref),
+                  onPressed: () => _delete(context, ref, event),
                   icon: const Icon(Icons.delete_outline_rounded),
                   label: const Text('Delete'),
                   style: OutlinedButton.styleFrom(

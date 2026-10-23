@@ -48,7 +48,7 @@ class _KeepsakesScreenState extends ConsumerState<KeepsakesScreen> {
         .add(
           coupleId: coupleId,
           title: picked.title,
-          date: day,
+          date: picked.date,
           type: picked.type,
           yearly: picked.yearly,
           createdBy: uid,
